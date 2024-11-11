@@ -1,0 +1,75 @@
+using System;
+using System.Collections.Generic;
+
+public class LZ77
+{
+    public struct LZ77Triple
+    {
+        public int Length;
+        public int Distance;
+        public char NextChar;
+
+        public LZ77Triple(int length, int distance, char nextChar)
+        {
+            Length = length;
+            Distance = distance;
+            NextChar = nextChar;
+        }
+    }
+
+    public static List<LZ77Triple> Compress(string input, int windowSize = 10, int bufferSize = 5)
+    {
+        List<LZ77Triple> output = new List<LZ77Triple>();
+        int n = input.Length;
+        int i = 0;
+
+        while (i < n)
+        {
+            int matchLength = 0;
+            int matchDistance = 0;
+
+            for (int j = Math.Max(0, i - windowSize); j < i; j++)
+            {
+                int k = 0;
+                while (k < bufferSize && (i + k) < n && input[j + k] == input[i + k])
+                {
+                    k++;
+                }
+
+                if (k > matchLength)
+                {
+                    matchLength = k;
+                    matchDistance = i - j;
+                }
+            }
+
+            char nextChar = (matchLength > 0 && i + matchLength < n) ? input[i + matchLength] : '\0';
+
+            output.Add(new LZ77Triple(matchLength, matchDistance, nextChar));
+
+            i += (matchLength > 0 ? matchLength : 1);
+        }
+
+        return output;
+    }
+
+    public static void PrintCompressedData(List<LZ77Triple> compressed)
+    {
+        foreach (var triple in compressed)
+        {
+            Console.Write($"({triple.Length}, {triple.Distance}, '{triple.NextChar}') ");
+        }
+        Console.WriteLine();
+    }
+
+    public static void Main(string[] args)
+    {
+        string input = "ABABABABA";  
+        Console.WriteLine("Input String: " + input);
+
+        List<LZ77Triple> compressedData = Compress(input);
+
+        Console.WriteLine("Compressed Data (Length, Distance, Next Character):");
+        PrintCompressedData(compressedData);
+    }
+}
