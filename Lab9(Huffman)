@@ -1,0 +1,113 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+class Node : IComparable<Node>
+{
+    public char? Character { get; set; }
+    public int Frequency { get; set; }
+    public Node Left { get; set; }
+    public Node Right { get; set; }
+
+    public Node(char? character, int frequency)
+    {
+        Character = character;
+        Frequency = frequency;
+        Left = null;
+        Right = null;
+    }
+
+    public int CompareTo(Node other)
+    {
+        return Frequency.CompareTo(other.Frequency);
+    }
+}
+
+class HuffmanCoding
+{
+    public static Node BuildHuffmanTree(string text)
+    {
+        var frequencyMap = text.GroupBy(c => c)
+                                .ToDictionary(g => g.Key, g => g.Count());
+
+        var priorityQueue = new SortedSet<Node>(frequencyMap.Select(kvp => new Node(kvp.Key, kvp.Value)));
+
+        while (priorityQueue.Count > 1)
+        {
+            var left = priorityQueue.Min;
+            priorityQueue.Remove(left);
+
+            var right = priorityQueue.Min;
+            priorityQueue.Remove(right);
+
+            var merged = new Node(null, left.Frequency + right.Frequency)
+            {
+                Left = left,
+                Right = right
+            };
+
+            priorityQueue.Add(merged);
+        }
+
+        return priorityQueue.First();
+    }
+
+    public static Dictionary<char, string> GenerateCodes(Node node, string prefix = "", Dictionary<char, string> codeMap = null)
+    {
+        if (codeMap == null)
+            codeMap = new Dictionary<char, string>();
+
+        if (node != null)
+        {
+            if (node.Character.HasValue) 
+                codeMap[node.Character.Value] = prefix;
+
+            GenerateCodes(node.Left, prefix + "0", codeMap);
+            GenerateCodes(node.Right, prefix + "1", codeMap);
+        }
+
+        return codeMap;
+    }
+
+    public static string HuffmanEncode(string text, Dictionary<char, string> codeMap)
+    {
+        return string.Concat(text.Select(c => codeMap[c]));
+    }
+
+    public static string HuffmanDecode(string encodedText, Node root)
+    {
+        var decodedText = new List<char>();
+        var currentNode = root;
+
+        foreach (var bit in encodedText)
+        {
+            currentNode = bit == '0' ? currentNode.Left : currentNode.Right;
+
+            if (currentNode.Character.HasValue)
+            {
+                decodedText.Add(currentNode.Character.Value);
+                currentNode = root;
+            }
+        }
+
+        return new string(decodedText.ToArray());
+    }
+
+    static void Main(string[] args)
+    {
+        string text = "grigoryan";
+
+        var root = BuildHuffmanTree(text);
+        var codeMap = GenerateCodes(root);
+
+        Console.WriteLine("Huffman Codes:");
+        foreach (var kvp in codeMap)
+            Console.WriteLine($"{kvp.Key}: {kvp.Value}");
+
+        string encodedText = HuffmanEncode(text, codeMap);
+        Console.WriteLine($"Encoded Text: {encodedText}");
+
+        string decodedText = HuffmanDecode(encodedText, root);
+        Console.WriteLine($"Decoded Text: {decodedText}");
+    }
+}
