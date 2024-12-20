@@ -1,0 +1,113 @@
+using System;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+
+class UDPSocket
+{
+    private UdpClient _client;
+    private IPEndPoint _serverEndpoint;
+
+    public UDPSocket(string server, int port)
+    {
+        // Initialize the UDP client and set server address and port
+        _client = new UdpClient();
+        _serverEndpoint = new IPEndPoint(IPAddress.Parse(server), port);
+        _client.Client.ReceiveTimeout = 5000; // Set a timeout of 5 seconds
+    }
+
+    public void SendDatagram(string message)
+    {
+        try
+        {
+            byte[] data = Encoding.UTF8.GetBytes(message);
+            _client.Send(data, data.Length, _serverEndpoint);
+        }
+        catch (SocketException e)
+        {
+            Console.WriteLine($"Error sending datagram: {e.Message}");
+        }
+    }
+
+    public string ReceiveDatagram()
+    {
+        try
+        {
+            var remoteEndpoint = new IPEndPoint(IPAddress.Any, 0);
+            byte[] data = _client.Receive(ref remoteEndpoint);
+            return Encoding.UTF8.GetString(data);
+        }
+        catch (SocketException e) when (e.SocketErrorCode == SocketError.TimedOut)
+        {
+            Console.WriteLine("Error: Timeout while waiting for a response.");
+            return null;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error receiving datagram: {e.Message}");
+            return null;
+        }
+    }
+
+    public void Close()
+    {
+        _client.Close();
+    }
+
+    ~UDPSocket()
+    {
+        Close();
+    }
+}
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        const string SERVER = "127.0.0.1";
+        const int PORT = 8888;
+
+        var clientSocket = new UDPSocket(SERVER, PORT);
+
+        Console.WriteLine($"Client initialized. Server address: {SERVER}, port: {PORT}");
+
+        while (true)
+        {
+            try
+            {
+                Console.Write("Enter message (or type 'exit' to quit): ");
+                string message = Console.ReadLine().Trim();
+
+                if (string.IsNullOrEmpty(message))
+                {
+                    Console.WriteLine("Please enter a non-empty message.");
+                    continue;
+                }
+
+                if (message.ToLower() == "exit")
+                {
+                    Console.WriteLine("Client shutting down.");
+                    break;
+                }
+
+                clientSocket.SendDatagram(message);
+                string response = clientSocket.ReceiveDatagram();
+
+                if (response != null)
+                {
+                    Console.WriteLine($"Received from server: {response}");
+                }
+                else
+                {
+                    Console.WriteLine("No response from server.");
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Unexpected error: {e.Message}");
+            }
+        }
+
+        clientSocket.Close();
+    }
+}
