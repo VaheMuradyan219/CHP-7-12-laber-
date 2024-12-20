@@ -1,0 +1,47 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+
+class Program
+{
+    static int globalCounter = 0;
+    static bool quitProgram = false;
+    static object lockObj = new object();
+
+    static async Task MyAsyncThread(CancellationToken token)
+    {
+        while (!token.IsCancellationRequested && !quitProgram)
+        {
+            lock (lockObj)
+            {
+                globalCounter++;
+                if (globalCounter > 100)
+                    quitProgram = true;
+                Console.WriteLine($"MyAsyncThread: {globalCounter}");
+            }
+            await Task.Delay(100);
+        }
+    }
+
+    static void Main()
+    {
+        var cts = new CancellationTokenSource();
+        var threadTask = MyAsyncThread(cts.Token);
+
+        while (!quitProgram)
+        {
+            lock (lockObj)
+            {
+                globalCounter++;
+                if (globalCounter > 5000)
+                    quitProgram = true;
+                Console.WriteLine($"Main loop: {globalCounter}");
+            }
+            Thread.Sleep(50);
+        }
+
+        cts.Cancel();
+        threadTask.Wait();
+        Console.WriteLine("Program finished.");
+    }
+}
